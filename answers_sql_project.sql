@@ -65,17 +65,12 @@ Include in your output the name of the court, and the name of the member
 formatted as a single column. Ensure no duplicate data, and order by
 the member name. */
 
-SELECT DISTINCT Members.firstname AS member_name,
-CASE WHEN Bookings.facid =0
-THEN 'Tennis Court 1'
-ELSE 'Tennis Court 2'
-END AS court_name
-FROM Members
-JOIN Bookings
-ON Members.memid = Bookings.memid
-WHERE Bookings.facid
-IN ( 0, 1 )
-ORDER BY member_name
+SELECT DISTINCT CONCAT( m.firstname, " ", m.surname ) AS name, f.name AS facility
+FROM Bookings b
+JOIN Facilities f ON b.facid = f.facid
+JOIN Members m ON b.memid = m.memid
+WHERE f.name LIKE 'Tennis%'
+ORDER BY name
 
 
 
@@ -86,11 +81,36 @@ the guest user's ID is always 0. Include in your output the name of the
 facility, the name of the member formatted as a single column, and the cost.
 Order by descending cost, and do not use any subqueries. */
 
-
+SELECT DISTINCT CONCAT( m.firstname, " ", m.surname ) AS name, f.name AS fac_name,
+CASE WHEN b.memid =0
+THEN f.guestcost * b.slots
+ELSE f.membercost * b.slots
+END AS cost
+FROM Bookings AS b
+JOIN Facilities AS f ON b.facid = f.facid
+JOIN Members AS m ON b.memid = m.memid
+WHERE b.starttime LIKE '2012-09-14%'
+HAVING cost >30
+ORDER BY cost DESC
 
 
 /* Q9: This time, produce the same result as in Q8, but using a subquery. */
 
+SELECT DISTINCT CONCAT( m.firstname, " ", m.surname ) AS name, tt.fac_name, tt.cost
+FROM (
+
+SELECT f.name AS fac_name, b.starttime,
+CASE WHEN b.memid =0
+THEN f.guestcost * b.slots
+ELSE f.membercost * b.slots
+END AS cost
+FROM Bookings AS b
+JOIN Facilities AS f ON b.facid = f.facid
+JOIN Members AS m ON b.memid = m.memid
+) AS tt
+WHERE tt.starttime LIKE '2012-09-14%'
+AND tt.cost >30
+ORDER BY tt.cost DESC
 
 
 
@@ -99,5 +119,13 @@ Order by descending cost, and do not use any subqueries. */
 The output of facility name and total revenue, sorted by revenue. Remember
 that there's a different cost for guests and members! */
 
-
-
+SELECT f.name AS fac_name,
+CASE WHEN b.memid =0
+THEN f.guestcost * b.slots + f.initialoutlay - f.monthlymaintenance
+ELSE f.membercost * b.slots + f.initialoutlay - f.monthlymaintenance
+END AS revenue
+FROM Facilities AS f
+JOIN Bookings AS b ON b.facid = f.facid
+GROUP BY fac_name
+HAVING revenue < 1000
+ORDER BY revenue
